@@ -28,7 +28,7 @@ dependencies {
 	implementation("io.grpc:grpc-services")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.springframework.ai:spring-ai-starter-mcp-client")
-	implementation("org.springframework.ai:spring-ai-starter-mcp-server")
+	implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")
 	implementation("org.springframework.grpc:spring-grpc-client-spring-boot-starter")
 	implementation("org.springframework.grpc:spring-grpc-server-spring-boot-starter")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
