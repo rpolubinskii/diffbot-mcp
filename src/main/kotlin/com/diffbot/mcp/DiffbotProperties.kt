@@ -12,6 +12,7 @@ class DiffbotProperties {
 	var topics: Topics = Topics()
 	var actions: Actions = Actions()
 	var services: Services = Services()
+	var audio: Audio = Audio()
 	var futureServices: FutureServices = FutureServices()
 
 	class Rosbridge {
@@ -40,9 +41,14 @@ class DiffbotProperties {
 		var rosActionServersType: String = "rosapi_msgs/srv/GetActionServers"
 	}
 
+	class Audio {
+		var host: String = "localhost"
+		var port: Int = 50052
+		var deadlineSeconds: Double = 60.0
+	}
+
 	class FutureServices {
 		var vlmConfigured: Boolean = false
-		var ttsConfigured: Boolean = false
 		var ragConfigured: Boolean = false
 	}
 }

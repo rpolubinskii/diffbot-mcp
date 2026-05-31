@@ -25,7 +25,10 @@ extra["springAiVersion"] = "2.0.0-M8"
 extra["springGrpcVersion"] = "1.0.3"
 
 dependencies {
+	implementation("io.grpc:grpc-netty-shaded")
+	implementation("io.grpc:grpc-protobuf")
 	implementation("io.grpc:grpc-services")
+	implementation("io.grpc:grpc-stub")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.springframework.ai:spring-ai-starter-mcp-client")
 	implementation("org.springframework.ai:spring-ai-starter-mcp-server-webmvc")

@@ -12,6 +12,7 @@ import tools.jackson.databind.ObjectMapper
 class DiffbotMcpSurface(
 	private val state: RobotStateService,
 	private val navigation: NavigationService,
+	private val audio: AudioClientService,
 	private val ros: RosMcpGateway,
 	private val properties: DiffbotProperties,
 ) {
@@ -49,7 +50,7 @@ class DiffbotMcpSurface(
 				"ros_mcp" to ros.clientSummary(),
 				"future_backends" to mapOf(
 					"diffbot_vlm" to properties.futureServices.vlmConfigured,
-					"diffbot_tts" to properties.futureServices.ttsConfigured,
+					"diffbot_audio" to true,
 					"diffbot_rag" to properties.futureServices.ragConfigured,
 				),
 				"safety" to mapOf(
@@ -156,14 +157,14 @@ class DiffbotMcpSurface(
 
 	@McpTool(
 		name = "speak.say",
-		description = "Speak text using the future diffbot-tts backend.",
+		description = "Speak text using the diffbot-audio Piper backend.",
 		annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = false),
 		generateOutputSchema = true,
 	)
 	fun say(
 		@McpToolParam(description = "Text to speak.")
 		text: String,
-	): Map<String, Any?> = GatewayResult.backendUnavailable("diffbot-tts") + mapOf("text" to text)
+	): Map<String, Any?> = audio.speak(text)
 
 	@McpTool(
 		name = "memory.retrieve",

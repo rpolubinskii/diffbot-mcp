@@ -54,4 +54,12 @@ diffbot.rosbridge.port=9090
 diffbot.rosbridge.connect-timeout-seconds=2.0
 ```
 
-Future VLM, TTS, and RAG services are intentionally stubs in v1 and return `backend_unavailable` until configured.
+Configure `diffbot-audio` separately. `speak.say` calls its streaming gRPC `Speak` RPC and waits for `FINISHED` or `FAILED` before returning:
+
+```properties
+diffbot.audio.host=localhost
+diffbot.audio.port=50052
+diffbot.audio.deadline-seconds=60.0
+```
+
+Future VLM and RAG services are intentionally stubs in v1 and return `backend_unavailable` until configured.

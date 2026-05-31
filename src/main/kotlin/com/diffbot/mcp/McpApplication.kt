@@ -9,5 +9,5 @@ import org.springframework.boot.runApplication
 class McpApplication
 
 fun main(args: Array<String>) {
-	runApplication<McpApplication>(*args)
+    runApplication<McpApplication>(*args)
 }
