@@ -8,7 +8,6 @@ backend instead of exposing the full ROS graph as normal agent tools.
 Resources:
 
 - `robot://status`
-- `robot://capabilities`
 - `robot://diagnostics/ros-summary`
 - `robot://diagnostics/ros-raw`
 
@@ -24,10 +23,6 @@ Tools:
 - `speak.say`
 - `memory.retrieve`
 - `memory.memorize`
-
-Prompt:
-
-- `diffbot.command_turn`
 
 ## Running
 

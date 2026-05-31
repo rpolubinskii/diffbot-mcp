@@ -119,16 +119,11 @@ class RobotStateService(
 		val pose = pose(timeoutSeconds = 1.0)
 		val imu = imu(timeoutSeconds = 1.0)
 		val velocity = currentVelocity(timeoutSeconds = 1.0)
-		val summary = rosSummary(includeRawLists = false)
 
 		return GatewayResult.ok(
 			mapOf(
 				"pose" to pose.compactOrError(),
 				"current_velocity" to velocity.compactOrError(),
-				"nav_status" to mapOf(
-					"navigate_to_pose_action" to keyAvailable(summary, "navigate_to_pose"),
-					"spin_action" to keyAvailable(summary, "spin"),
-				),
 				"motor_safety" to mapOf("stop_tool" to "nav.stop", "raw_cmd_vel_exposed" to false),
 				"imu" to imu.compactOrError(),
 			),
@@ -163,10 +158,6 @@ class RobotStateService(
 				"odom" to topicNames.contains(properties.topics.odom),
 				"base_odom" to topicNames.contains(properties.topics.baseOdom),
 				"cmd_vel" to topicNames.contains(properties.topics.cmdVel),
-			),
-			"key_actions" to mapOf(
-				"navigate_to_pose" to actionNames.contains(properties.actions.navigateToPose),
-				"spin" to actionNames.contains(properties.actions.spin),
 			),
 		)
 
@@ -250,9 +241,6 @@ class RobotStateService(
 
 	private fun stringList(value: Any?): List<String> =
 		(value as? List<*>)?.mapNotNull { it?.toString() } ?: emptyList()
-
-	private fun keyAvailable(summary: Map<String, Any?>, key: String): Boolean =
-		((summary["key_actions"] as? Map<*, *>)?.get(key) as? Boolean) == true
 
 	private data class PoseCandidate(
 		val topic: String,

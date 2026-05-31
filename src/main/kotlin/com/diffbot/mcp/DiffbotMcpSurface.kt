@@ -1,7 +1,5 @@
 package com.diffbot.mcp
 
-import org.springframework.ai.mcp.annotation.McpArg
-import org.springframework.ai.mcp.annotation.McpPrompt
 import org.springframework.ai.mcp.annotation.McpResource
 import org.springframework.ai.mcp.annotation.McpTool
 import org.springframework.ai.mcp.annotation.McpToolParam
@@ -13,8 +11,6 @@ class DiffbotMcpSurface(
 	private val state: RobotStateService,
 	private val navigation: NavigationService,
 	private val audio: AudioClientService,
-	private val ros: RosMcpGateway,
-	private val properties: DiffbotProperties,
 ) {
 	private val mapper = ObjectMapper()
 
@@ -27,53 +23,20 @@ class DiffbotMcpSurface(
 	fun robotStatus(): String = mapper.writeValueAsString(state.compactStatus())
 
 	@McpResource(
-		name = "robot capabilities",
-		uri = "robot://capabilities",
-		description = "Available high-level robot capabilities and connected backends.",
-		mimeType = "application/json",
-	)
-	fun robotCapabilities(): String = mapper.writeValueAsString(
-		GatewayResult.ok(
-			mapOf(
-				"high_level_capabilities" to listOf(
-					"vision.get_camera_image",
-					"vision.describe_camera_image",
-					"nav.get_pose",
-					"nav.get_imu",
-					"nav.move_to",
-					"nav.turn",
-					"nav.stop",
-					"speak.say",
-					"memory.retrieve",
-					"memory.memorize",
-				),
-				"ros_mcp" to ros.clientSummary(),
-				"future_backends" to mapOf(
-					"diffbot_vlm" to properties.futureServices.vlmConfigured,
-					"diffbot_audio" to true,
-					"diffbot_rag" to properties.futureServices.ragConfigured,
-				),
-				"safety" to mapOf(
-					"raw_cmd_vel_public_tool" to false
-				),
-			),
-		),
-	)
-
-	@McpResource(
 		name = "ROS summary",
 		uri = "robot://diagnostics/ros-summary",
-		description = "Summarized ROS graph and key topic/action availability from ros-mcp.",
+		description = "Summarized ROS graph and key topic availability from ros-mcp.",
 		mimeType = "application/json",
 	)
 	fun rosSummary(): String = mapper.writeValueAsString(state.rosSummary(includeRawLists = false))
 
-	@McpResource(
-		name = "raw ROS diagnostics",
-		uri = "robot://diagnostics/ros-raw",
-		description = "Advanced escape hatch for low-level ROS inspection through ros-mcp.",
-		mimeType = "application/json",
-	)
+	// TODO: decide what to do later. disabled for now
+	//	@McpResource(
+	//		name = "raw ROS diagnostics",
+	//		uri = "robot://diagnostics/ros-raw",
+	//		description = "Advanced escape hatch for low-level ROS inspection through ros-mcp.",
+	//		mimeType = "application/json",
+	//	)
 	fun rosRaw(): String = mapper.writeValueAsString(state.rosSummary(includeRawLists = true))
 
 	@McpTool(
@@ -187,37 +150,4 @@ class DiffbotMcpSurface(
 		@McpToolParam(description = "Memory content to store.")
 		content: String,
 	): Map<String, Any?> = GatewayResult.backendUnavailable("diffbot-rag") + mapOf("content" to content)
-
-	@McpPrompt(
-		name = "diffbot.command_turn",
-		title = "DiffBot Command Turn",
-		description = "Prompt for one voice/user command turn against DiffBot.",
-	)
-	fun commandTurn(
-		@McpArg(name = "vocal_command", description = "Voice command transcript.", required = true)
-		vocalCommand: String?,
-		@McpArg(name = "operator_text", description = "Optional operator text.", required = false)
-		operatorText: String?,
-		@McpArg(name = "robot_status", description = "Optional compact robot://status payload.", required = false)
-		robotStatus: String?,
-	): String =
-		"""
-		You are controlling DiffBot for one command turn.
-
-		Vocal command:
-		${vocalCommand.orEmpty()}
-
-		Operator text:
-		${operatorText.orEmpty()}
-
-		Robot status:
-		${robotStatus.orEmpty()}
-
-		Rules:
-		- Prefer high-level diffbot-mcp tools over diagnostics.
-		- Use diagnostics only when high-level state is unavailable or inconsistent.
-		- Do not assume images, lidar, raw ROS graph data, or memory search results unless you explicitly call the relevant tool/resource.
-		- Stop or cancel motion on uncertainty, failed motion, timeout, or interruption.
-		- Treat backend_unavailable, ros_graph_unavailable, localization_unavailable, navigation_rejected, timeout, and unsafe_request as actionable error classes.
-		""".trimIndent()
 }
