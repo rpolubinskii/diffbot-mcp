@@ -49,7 +49,8 @@ diffbot.rosbridge.port=9090
 diffbot.rosbridge.connect-timeout-seconds=2.0
 ```
 
-Configure `diffbot-audio` separately. `speak.say` calls its streaming gRPC `Speak` RPC and waits for `FINISHED` or `FAILED` before returning:
+Configure `diffbot-audio` separately. `speak.say` calls its streaming gRPC `Speak` RPC and waits for `FINISHED` or `FAILED` before
+returning:
 
 ```properties
 diffbot.audio.host=localhost
