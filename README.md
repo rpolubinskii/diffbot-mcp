@@ -14,7 +14,6 @@ Resources:
 Tools:
 
 - `vision.get_camera_image`
-- `vision.describe_camera_image`
 - `nav.get_pose`
 - `nav.get_imu`
 - `nav.move_to`
@@ -59,3 +58,9 @@ diffbot.audio.deadline-seconds=60.0
 ```
 
 Future VLM and RAG services are intentionally stubs in v1 and return `backend_unavailable` until configured.
+
+
+## TODO
+New mcp tools:
+- wait n seconds
+- reset context

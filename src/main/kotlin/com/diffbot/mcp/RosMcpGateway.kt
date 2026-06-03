@@ -59,6 +59,31 @@ class RosMcpGateway(
         }
     }
 
+    fun callToolResult(tool: String, arguments: Map<String, Any?> = emptyMap()): McpSchema.CallToolResult {
+        val client = selectClient()
+            ?: return errorToolResult(
+                "backend_unavailable",
+                "ros-mcp client is not configured. Configure spring.ai.mcp.client.* to connect to ros-mcp.",
+            )
+
+        return try {
+            if (tool != "connect_to_robot") {
+                ensureRosbridgeConnected(client)?.let {
+                    return errorToolResult(
+                        it["error_class"]?.toString() ?: "ros_graph_unavailable",
+                        it["message"]?.toString() ?: "ros-mcp could not connect to rosbridge.",
+                    )
+                }
+            }
+            callClientToolResult(client, tool, arguments)
+        } catch (ex: Exception) {
+            errorToolResult(
+                classifyRosException(ex),
+                ex.message ?: "ros-mcp call failed.",
+            )
+        }
+    }
+
     fun callRaw(tool: String, arguments: Map<String, Any?> = emptyMap()): Map<String, Any?> {
         val client = selectClient()
             ?: return GatewayResult.error(
@@ -123,14 +148,21 @@ class RosMcpGateway(
     }
 
     private fun callClientTool(client: McpSyncClient, tool: String, arguments: Map<String, Any?>): Map<String, Any?> {
+        return normalizeResult(tool, callClientToolResult(client, tool, arguments))
+    }
+
+    private fun callClientToolResult(
+        client: McpSyncClient,
+        tool: String,
+        arguments: Map<String, Any?>,
+    ): McpSchema.CallToolResult {
         if (!client.isInitialized) {
             client.initialize()
         }
         val request = McpSchema.CallToolRequest.builder(tool)
             .arguments(arguments.filterValues { it != null }.mapValues { it.value as Any })
             .build()
-        val result = client.callTool(request)
-        return normalizeResult(tool, result)
+        return client.callTool(request)
     }
 
     private fun isSuccessfulRosbridgeConnection(result: Map<String, Any?>): Boolean {
@@ -214,6 +246,14 @@ class RosMcpGateway(
         } catch (_: Exception) {
             null
         }
+
+    private fun errorToolResult(errorClass: String, message: String): McpSchema.CallToolResult =
+        McpSchema.CallToolResult(
+            listOf(McpSchema.TextContent.builder(mapper.writeValueAsString(GatewayResult.error(errorClass, message))).build()),
+            true,
+            null,
+            emptyMap(),
+        )
 
     private fun classifyRosException(ex: Exception): String {
         val message = ex.message.orEmpty().lowercase()

@@ -1,5 +1,6 @@
 package com.diffbot.mcp
 
+import io.modelcontextprotocol.spec.McpSchema
 import org.springframework.ai.mcp.annotation.McpResource
 import org.springframework.ai.mcp.annotation.McpTool
 import org.springframework.ai.mcp.annotation.McpToolParam
@@ -41,22 +42,13 @@ class DiffbotMcpSurface(
 
     @McpTool(
         name = "vision.get_camera_image",
-        description = "Return the latest RealSense RGB image metadata/content provided by ros-mcp from /camera/camera/color/image_raw.",
+        description = "Capture and return the latest RealSense RGB image from /camera/camera/color/image_raw as MCP image content for direct multimodal analysis.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
-        generateOutputSchema = true,
     )
     fun getCameraImage(
         @McpToolParam(description = "Optional timeout in seconds.", required = false)
         timeoutSeconds: Double?,
-    ): Map<String, Any?> = state.cameraImage(timeoutSeconds)
-
-    @McpTool(
-        name = "vision.describe_camera_image",
-        description = "Describe the latest camera image using the future diffbot-vlm backend.",
-        annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = false),
-        generateOutputSchema = true,
-    )
-    fun describeCameraImage(): Map<String, Any?> = GatewayResult.backendUnavailable("diffbot-vlm")
+    ): McpSchema.CallToolResult = state.cameraImageContent(timeoutSeconds)
 
     @McpTool(
         name = "nav.get_pose",

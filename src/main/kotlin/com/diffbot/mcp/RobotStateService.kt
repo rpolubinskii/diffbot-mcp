@@ -1,5 +1,6 @@
 package com.diffbot.mcp
 
+import io.modelcontextprotocol.spec.McpSchema
 import org.springframework.stereotype.Service
 import java.time.Instant
 import kotlin.math.PI
@@ -37,6 +38,36 @@ class RobotStateService(
                 ),
             )
         }
+    }
+
+    fun cameraImageContent(timeoutSeconds: Double? = null): McpSchema.CallToolResult {
+        val result = ros.callToolResult(
+            "subscribe_once",
+            mapOf(
+                "topic" to properties.topics.cameraImage,
+                "msg_type" to "sensor_msgs/msg/Image",
+                "timeout" to (timeoutSeconds ?: properties.cameraTimeoutSeconds),
+                "queue_length" to 5,
+                "throttle_rate_ms" to 500,
+                "expects_image" to "true",
+            ),
+        )
+
+        val content = result.content().orEmpty().toMutableList()
+        val hasImage = content.any { it is McpSchema.ImageContent }
+        if (!hasImage) {
+            return result
+        }
+
+        content += McpSchema.TextContent.builder(
+            "Image captured from ${properties.topics.cameraImage} via ros-mcp.subscribe_once. Analyze the attached image directly."
+        ).build()
+        return McpSchema.CallToolResult(
+            content,
+            result.isError(),
+            result.structuredContent(),
+            result.meta(),
+        )
     }
 
     fun imu(timeoutSeconds: Double? = null): Map<String, Any?> {
