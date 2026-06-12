@@ -12,6 +12,7 @@ class DiffbotMcpSurface(
     private val state: RobotStateService,
     private val navigation: NavigationService,
     private val audio: AudioClientService,
+    private val toolCallLogger: McpToolCallLogger,
 ) {
     private val mapper = ObjectMapper()
 
@@ -48,7 +49,13 @@ class DiffbotMcpSurface(
     fun getCameraImage(
         @McpToolParam(description = "Optional timeout in seconds.", required = false)
         timeoutSeconds: Double?,
-    ): McpSchema.CallToolResult = state.cameraImageContent(timeoutSeconds)
+    ): McpSchema.CallToolResult = toolCallLogger.log(
+        direction = "inbound",
+        tool = "vision.get_camera_image",
+        context = mapOf("timeout_seconds" to timeoutSeconds),
+    ) {
+        state.cameraImageContent(timeoutSeconds)
+    }
 
     @McpTool(
         name = "nav.get_pose",
@@ -59,7 +66,13 @@ class DiffbotMcpSurface(
     fun getPose(
         @McpToolParam(description = "Optional timeout in seconds.", required = false)
         timeoutSeconds: Double?,
-    ): Map<String, Any?> = state.pose(timeoutSeconds)
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "nav.get_pose",
+        context = mapOf("timeout_seconds" to timeoutSeconds),
+    ) {
+        state.pose(timeoutSeconds)
+    }
 
     @McpTool(
         name = "nav.get_imu",
@@ -70,7 +83,13 @@ class DiffbotMcpSurface(
     fun getImu(
         @McpToolParam(description = "Optional timeout in seconds.", required = false)
         timeoutSeconds: Double?,
-    ): Map<String, Any?> = state.imu(timeoutSeconds)
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "nav.get_imu",
+        context = mapOf("timeout_seconds" to timeoutSeconds),
+    ) {
+        state.imu(timeoutSeconds)
+    }
 
     @McpTool(
         name = "nav.move_to",
@@ -87,7 +106,18 @@ class DiffbotMcpSurface(
         yawRadians: Double,
         @McpToolParam(description = "Optional action timeout in seconds.", required = false)
         timeoutSeconds: Double?,
-    ): Map<String, Any?> = navigation.moveTo(x, y, yawRadians, timeoutSeconds)
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "nav.move_to",
+        context = mapOf(
+            "x" to x,
+            "y" to y,
+            "yaw_radians" to yawRadians,
+            "timeout_seconds" to timeoutSeconds,
+        ),
+    ) {
+        navigation.moveTo(x, y, yawRadians, timeoutSeconds)
+    }
 
     @McpTool(
         name = "nav.turn",
@@ -100,7 +130,13 @@ class DiffbotMcpSurface(
         radians: Double,
         @McpToolParam(description = "Optional action timeout in seconds.", required = false)
         timeoutSeconds: Double?,
-    ): Map<String, Any?> = navigation.turn(radians, timeoutSeconds)
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "nav.turn",
+        context = mapOf("radians" to radians, "timeout_seconds" to timeoutSeconds),
+    ) {
+        navigation.turn(radians, timeoutSeconds)
+    }
 
     @McpTool(
         name = "nav.stop",
@@ -108,7 +144,9 @@ class DiffbotMcpSurface(
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, idempotentHint = true, openWorldHint = true),
         generateOutputSchema = true,
     )
-    fun stop(): Map<String, Any?> = navigation.stop()
+    fun stop(): Map<String, Any?> = toolCallLogger.log(direction = "inbound", tool = "nav.stop") {
+        navigation.stop()
+    }
 
     @McpTool(
         name = "speak.say",
@@ -119,7 +157,13 @@ class DiffbotMcpSurface(
     fun say(
         @McpToolParam(description = "Text to speak.")
         text: String,
-    ): Map<String, Any?> = audio.speak(text)
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "speak.say",
+        context = mapOf("text_length" to text.length),
+    ) {
+        audio.speak(text)
+    }
 
     @McpTool(
         name = "memory.retrieve",
@@ -130,7 +174,13 @@ class DiffbotMcpSurface(
     fun retrieveMemory(
         @McpToolParam(description = "Memory query.")
         query: String,
-    ): Map<String, Any?> = GatewayResult.backendUnavailable("diffbot-rag") + mapOf("query" to query)
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "memory.retrieve",
+        context = mapOf("query_length" to query.length),
+    ) {
+        GatewayResult.backendUnavailable("diffbot-rag") + mapOf("query" to query)
+    }
 
     @McpTool(
         name = "memory.memorize",
@@ -141,5 +191,11 @@ class DiffbotMcpSurface(
     fun memorize(
         @McpToolParam(description = "Memory content to store.")
         content: String,
-    ): Map<String, Any?> = GatewayResult.backendUnavailable("diffbot-rag") + mapOf("content" to content)
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "memory.memorize",
+        context = mapOf("content_length" to content.length),
+    ) {
+        GatewayResult.backendUnavailable("diffbot-rag") + mapOf("content" to content)
+    }
 }

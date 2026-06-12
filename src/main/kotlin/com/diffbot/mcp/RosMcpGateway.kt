@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicReference
 class RosMcpGateway(
     private val clientsProvider: ObjectProvider<List<McpSyncClient>>,
     private val properties: DiffbotProperties,
+    private val toolCallLogger: McpToolCallLogger,
 ) {
     private val mapper = ObjectMapper()
     private val mapType = object : TypeReference<Map<String, Any?>>() {}
@@ -155,14 +156,21 @@ class RosMcpGateway(
         client: McpSyncClient,
         tool: String,
         arguments: Map<String, Any?>,
-    ): McpSchema.CallToolResult {
+    ): McpSchema.CallToolResult = toolCallLogger.log(
+        direction = "outbound",
+        tool = tool,
+        context = mapOf(
+            "server" to safeServerName(client),
+            "argument_names" to arguments.keys.sorted().joinToString(","),
+        ),
+    ) {
         if (!client.isInitialized) {
             client.initialize()
         }
         val request = McpSchema.CallToolRequest.builder(tool)
             .arguments(arguments.filterValues { it != null }.mapValues { it.value as Any })
             .build()
-        return client.callTool(request)
+        client.callTool(request)
     }
 
     private fun isSuccessfulRosbridgeConnection(result: Map<String, Any?>): Boolean {
