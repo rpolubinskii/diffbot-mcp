@@ -8,12 +8,17 @@ class DiffbotProperties {
     var cameraTimeoutSeconds: Double = 10.0
     var rosTimeoutSeconds: Double = 5.0
 
+    var debug: Debug = Debug()
     var rosbridge: Rosbridge = Rosbridge()
     var topics: Topics = Topics()
     var actions: Actions = Actions()
     var services: Services = Services()
     var audio: Audio = Audio()
     var futureServices: FutureServices = FutureServices()
+
+    class Debug {
+        var enabled: Boolean = false
+    }
 
     class Rosbridge {
         var ip: String = "192.168.0.147"
@@ -34,6 +39,7 @@ class DiffbotProperties {
     class Actions {
         var navigateToPose: String = "/navigate_to_pose"
         var spin: String = "/spin"
+        var driveOnHeading: String = "/drive_on_heading"
     }
 
     class Services {

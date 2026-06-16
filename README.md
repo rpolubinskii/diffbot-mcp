@@ -23,6 +23,10 @@ Tools:
 - `memory.retrieve`
 - `memory.memorize`
 
+Debug mode can additionally expose:
+
+- `nav.drive_on_heading`
+
 ## Running
 
 The project targets JDK 25 and uses Spring AI MCP annotation scanning.
@@ -48,6 +52,16 @@ diffbot.rosbridge.port=9090
 diffbot.rosbridge.connect-timeout-seconds=2.0
 ```
 
+Direct relative movement is disabled by default. Enable the debug MCP surface at startup to expose
+`nav.drive_on_heading`, which uses Nav2's collision-aware `DriveOnHeading` behavior rather than raw `/cmd_vel`:
+
+```properties
+diffbot.debug.enabled=true
+```
+
+The tool accepts a signed distance in meters, an optional positive speed magnitude (default `0.15` m/s), and an
+optional timeout (default `30` seconds). Positive distances move forward and negative distances move backward.
+
 Configure `diffbot-audio` separately. `speak.say` calls its streaming gRPC `Speak` RPC and waits for `FINISHED` or `FAILED` before
 returning:
 
@@ -58,4 +72,3 @@ diffbot.audio.deadline-seconds=60.0
 ```
 
 Future VLM and RAG services are intentionally stubs in v1 and return `backend_unavailable` until configured.
- 
