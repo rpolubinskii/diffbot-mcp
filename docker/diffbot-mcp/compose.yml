@@ -1,0 +1,15 @@
+services:
+  diffbot-mcp:
+    build:
+      context: ../..
+      dockerfile: docker/diffbot-mcp/Dockerfile
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      SERVER_PORT: "8080"
+      SPRING_AI_MCP_CLIENT_STREAMABLE_HTTP_CONNECTIONS_ROS_MCP_URL: "http://localhost:9000"
+      SPRING_AI_MCP_CLIENT_STREAMABLE_HTTP_CONNECTIONS_ROS_MCP_ENDPOINT: "/mcp"
+      DIFFBOT_ROSBRIDGE_IP: "127.0.0.1"
+      DIFFBOT_ROSBRIDGE_PORT: "9090"
+      DIFFBOT_AUDIO_HOST: "127.0.0.1"
+      DIFFBOT_AUDIO_PORT: "50052"
