@@ -186,36 +186,6 @@ class NavigationService(
         }
     }
 
-    private fun isToolError(result: Map<String, Any?>): Boolean {
-        if (isSuccessfulTerminalAction(result)) {
-            return false
-        }
-
-        return result["ok"] == false ||
-            result["is_error"] == true ||
-            result["success"] == false ||
-            result["error"] != null
-    }
-
-    private fun isSuccessfulTerminalAction(result: Map<String, Any?>): Boolean {
-        if (result["success"] != true) {
-            return false
-        }
-
-        val state = result["state"]?.toString()
-        if (state.equals("succeeded", ignoreCase = true)) {
-            return true
-        }
-
-        val statusText = result["status_text"]?.toString()
-        if (statusText.equals("STATUS_SUCCEEDED", ignoreCase = true)) {
-            return true
-        }
-
-        return when (val status = result["status"]) {
-            is Number -> status.toInt() == 4
-            is String -> status == "4"
-            else -> false
-        }
-    }
+    private fun isToolError(result: Map<String, Any?>): Boolean =
+        result["ok"] == false || result["error"] != null || result["is_error"] == true || result["success"] == false
 }
