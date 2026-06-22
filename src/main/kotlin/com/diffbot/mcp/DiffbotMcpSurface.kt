@@ -45,6 +45,7 @@ class DiffbotMcpSurface(
         name = "vision.get_camera_image",
         description = "Capture and return the latest RealSense RGB image from /camera/camera/color/image_raw as MCP image content for direct multimodal analysis.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
+        metaProvider = VisionCategory::class,
     )
     fun getCameraImage(
         @McpToolParam(description = "Optional timeout in seconds.", required = false)
@@ -62,6 +63,7 @@ class DiffbotMcpSurface(
         description = "Return compact robot pose using localization pose when available, then odometry fallbacks with source metadata.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
+        metaProvider = StatusCategory::class,
     )
     fun getPose(
         @McpToolParam(description = "Optional timeout in seconds.", required = false)
@@ -79,6 +81,7 @@ class DiffbotMcpSurface(
         description = "Return compact IMU orientation, angular velocity, and linear acceleration from /imu/external/data_body.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
+        metaProvider = StatusCategory::class,
     )
     fun getImu(
         @McpToolParam(description = "Optional timeout in seconds.", required = false)
@@ -96,6 +99,7 @@ class DiffbotMcpSurface(
         description = "Send a guarded Nav2 NavigateToPose goal in the map frame.",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
+        metaProvider = NavigationCategory::class,
     )
     fun moveTo(
         @McpToolParam(description = "Target x coordinate in the map frame.")
@@ -124,6 +128,7 @@ class DiffbotMcpSurface(
         description = "Perform a bounded in-place rotation through the Nav2 Spin action.",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
+        metaProvider = NavigationCategory::class,
     )
     fun turn(
         @McpToolParam(description = "Relative turn angle in radians.")
@@ -143,6 +148,7 @@ class DiffbotMcpSurface(
         description = "Cancel remembered navigation goals and send the safest available stop command.",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, idempotentHint = true, openWorldHint = true),
         generateOutputSchema = true,
+        metaProvider = SafetyCategory::class,
     )
     fun stop(): Map<String, Any?> = toolCallLogger.log(direction = "inbound", tool = "nav.stop") {
         navigation.stop()
@@ -153,6 +159,7 @@ class DiffbotMcpSurface(
         description = "Speak text using the diffbot-audio Piper backend.",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = false),
         generateOutputSchema = true,
+        metaProvider = SpeechCategory::class,
     )
     fun say(
         @McpToolParam(description = "Text to speak.")
@@ -170,6 +177,7 @@ class DiffbotMcpSurface(
         description = "Retrieve memory using the future diffbot-rag backend.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = false),
         generateOutputSchema = true,
+        metaProvider = GenericToolCategory::class,
     )
     fun retrieveMemory(
         @McpToolParam(description = "Memory query.")
@@ -187,6 +195,7 @@ class DiffbotMcpSurface(
         description = "Store memory using the future diffbot-rag backend.",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = false),
         generateOutputSchema = true,
+        metaProvider = GenericToolCategory::class,
     )
     fun memorize(
         @McpToolParam(description = "Memory content to store.")
