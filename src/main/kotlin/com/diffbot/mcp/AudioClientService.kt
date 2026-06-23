@@ -13,11 +13,11 @@ import java.util.concurrent.TimeUnit
 @Service
 class AudioClientService(
     private val properties: DiffbotProperties,
-) : DisposableBean {
+) : DisposableBean, SpeechOutput {
     @Volatile
     private var channel: ManagedChannel? = null
 
-    fun speak(text: String): Map<String, Any?> {
+    override fun speak(text: String): Map<String, Any?> {
         val normalized = text.trim()
         if (normalized.isEmpty()) {
             return GatewayResult.error("invalid_request", "text must not be blank")

@@ -4,6 +4,7 @@ import io.modelcontextprotocol.spec.McpSchema
 import org.springframework.ai.mcp.annotation.McpResource
 import org.springframework.ai.mcp.annotation.McpTool
 import org.springframework.ai.mcp.annotation.McpToolParam
+import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext
 import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
 
@@ -12,6 +13,7 @@ class DiffbotMcpSurface(
     private val state: RobotStateService,
     private val navigation: NavigationService,
     private val audio: AudioClientService,
+    private val speechAsk: SpeechAskService,
     private val toolCallLogger: McpToolCallLogger,
 ) {
     private val mapper = ObjectMapper()
@@ -170,6 +172,27 @@ class DiffbotMcpSurface(
         context = mapOf("text_length" to text.length),
     ) {
         audio.speak(text)
+    }
+
+    @McpTool(
+        name = "speak.ask",
+        description = "Speak a question, then wait for one raw text answer from the operator.",
+        annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = false),
+        generateOutputSchema = true,
+        metaProvider = SpeechCategory::class,
+    )
+    fun ask(
+        context: McpSyncRequestContext,
+        @McpToolParam(description = "Question text to speak.")
+        message: String,
+        @McpToolParam(description = "Optional answer timeout in seconds. Defaults to 120.", required = false)
+        timeoutSeconds: Double?,
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "speak.ask",
+        context = mapOf("message_length" to message.length, "timeout_seconds" to timeoutSeconds),
+    ) {
+        speechAsk.ask(context, message, timeoutSeconds)
     }
 
     @McpTool(
