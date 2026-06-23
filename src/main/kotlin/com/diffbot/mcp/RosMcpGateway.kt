@@ -14,16 +14,16 @@ class RosMcpGateway(
     private val clientsProvider: ObjectProvider<List<McpSyncClient>>,
     private val properties: DiffbotProperties,
     private val toolCallLogger: McpToolCallLogger,
-) {
+) : RosToolCaller {
     private val mapper = ObjectMapper()
     private val mapType = object : TypeReference<Map<String, Any?>>() {}
     private val selectedClient = AtomicReference<McpSyncClient?>()
     private val rosbridgeConnected = AtomicBoolean(false)
     private val rosbridgeConnectionLock = Any()
 
-    fun isConfigured(): Boolean = selectClient() != null
+    override fun isConfigured(): Boolean = selectClient() != null
 
-    fun clientSummary(): Map<String, Any?> {
+    override fun clientSummary(): Map<String, Any?> {
         val clients = clientsProvider.ifAvailable ?: emptyList()
         val selected = selectClient()
         return mapOf(
@@ -38,7 +38,7 @@ class RosMcpGateway(
         )
     }
 
-    fun call(tool: String, arguments: Map<String, Any?> = emptyMap()): Map<String, Any?> {
+    override fun call(tool: String, arguments: Map<String, Any?>): Map<String, Any?> {
         val client = selectClient()
             ?: return GatewayResult.error(
                 "backend_unavailable",
@@ -60,7 +60,7 @@ class RosMcpGateway(
         }
     }
 
-    fun callToolResult(tool: String, arguments: Map<String, Any?> = emptyMap()): McpSchema.CallToolResult {
+    override fun callToolResult(tool: String, arguments: Map<String, Any?>): McpSchema.CallToolResult {
         val client = selectClient()
             ?: return errorToolResult(
                 "backend_unavailable",
@@ -85,7 +85,7 @@ class RosMcpGateway(
         }
     }
 
-    fun callRaw(tool: String, arguments: Map<String, Any?> = emptyMap()): Map<String, Any?> {
+    override fun callRaw(tool: String, arguments: Map<String, Any?>): Map<String, Any?> {
         val client = selectClient()
             ?: return GatewayResult.error(
                 "backend_unavailable",

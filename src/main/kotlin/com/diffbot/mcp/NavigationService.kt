@@ -7,7 +7,7 @@ import kotlin.math.floor
 
 @Service
 class NavigationService(
-    private val ros: RosMcpGateway,
+    private val ros: RosToolCaller,
     private val state: RobotStateService,
     private val properties: DiffbotProperties,
 ) {
@@ -133,18 +133,9 @@ class NavigationService(
 
     fun stop(): Map<String, Any?> {
         val cancellations = mutableListOf<Map<String, Any?>>()
-        lastNavigateGoalId.getAndSet(null)?.let {
-            cancellations += ros.call("cancel_action_goal", mapOf("action_name" to properties.actions.navigateToPose, "goal_id" to it))
-        }
-        lastSpinGoalId.getAndSet(null)?.let {
-            cancellations += ros.call("cancel_action_goal", mapOf("action_name" to properties.actions.spin, "goal_id" to it))
-        }
-        lastDriveOnHeadingGoalId.getAndSet(null)?.let {
-            cancellations += ros.call(
-                "cancel_action_goal",
-                mapOf("action_name" to properties.actions.driveOnHeading, "goal_id" to it),
-            )
-        }
+        cancelRememberedGoal(properties.actions.navigateToPose, lastNavigateGoalId)?.let { cancellations += it.result }
+        cancelRememberedGoal(properties.actions.spin, lastSpinGoalId)?.let { cancellations += it.result }
+        cancelRememberedGoal(properties.actions.driveOnHeading, lastDriveOnHeadingGoalId)?.let { cancellations += it.result }
 
         val zeroTwist = mapOf(
             "linear" to mapOf("x" to 0.0, "y" to 0.0, "z" to 0.0),
@@ -171,6 +162,33 @@ class NavigationService(
         )
     }
 
+    fun cancelNavigateGoal(): Map<String, Any?> {
+        val cancellation = cancelRememberedGoal(properties.actions.navigateToPose, lastNavigateGoalId)
+            ?: return GatewayResult.ok(
+                mapOf(
+                    "cancelled" to false,
+                    "action" to properties.actions.navigateToPose,
+                    "reason" to "no_remembered_goal",
+                ),
+            )
+
+        val data = mapOf(
+            "cancelled" to true,
+            "action" to cancellation.actionName,
+            "goal_id" to cancellation.goalId,
+            "ros" to cancellation.result,
+        )
+        return if (isToolError(cancellation.result)) {
+            GatewayResult.error(
+                "navigation_cancel_failed",
+                "Nav2 NavigateToPose goal cancellation failed.",
+                data,
+            )
+        } else {
+            GatewayResult.ok(data)
+        }
+    }
+
     private fun duration(seconds: Double): Map<String, Int> {
         val wholeSeconds = floor(seconds).toInt()
         val nanoseconds = ((seconds - wholeSeconds) * 1_000_000_000).toInt()
@@ -186,6 +204,21 @@ class NavigationService(
         }
     }
 
+    private fun cancelRememberedGoal(
+        actionName: String,
+        target: AtomicReference<String?>,
+    ): RememberedGoalCancellation? {
+        val goalId = target.getAndSet(null) ?: return null
+        val result = ros.call("cancel_action_goal", mapOf("action_name" to actionName, "goal_id" to goalId))
+        return RememberedGoalCancellation(actionName, goalId, result)
+    }
+
     private fun isToolError(result: Map<String, Any?>): Boolean =
         result["ok"] == false || result["error"] != null || result["is_error"] == true || result["success"] == false
+
+    private data class RememberedGoalCancellation(
+        val actionName: String,
+        val goalId: String,
+        val result: Map<String, Any?>,
+    )
 }

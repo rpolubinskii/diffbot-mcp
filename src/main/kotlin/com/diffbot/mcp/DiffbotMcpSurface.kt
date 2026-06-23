@@ -12,6 +12,7 @@ import tools.jackson.databind.ObjectMapper
 class DiffbotMcpSurface(
     private val state: RobotStateService,
     private val navigation: NavigationService,
+    private val waitService: WaitService,
     private val audio: AudioClientService,
     private val speechAsk: SpeechAskService,
     private val toolCallLogger: McpToolCallLogger,
@@ -154,6 +155,33 @@ class DiffbotMcpSurface(
     )
     fun stop(): Map<String, Any?> = toolCallLogger.log(direction = "inbound", tool = "nav.stop") {
         navigation.stop()
+    }
+
+    @McpTool(
+        name = "nav.cancel_goal",
+        description = "Cancel the last remembered Nav2 NavigateToPose goal without publishing velocity stop commands.",
+        annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, idempotentHint = true, openWorldHint = true),
+        generateOutputSchema = true,
+    )
+    fun cancelNavigationGoal(): Map<String, Any?> = toolCallLogger.log(direction = "inbound", tool = "nav.cancel_goal") {
+        navigation.cancelNavigateGoal()
+    }
+
+    @McpTool(
+        name = "system.wait",
+        description = "Block this tool call for a fixed duration in seconds.",
+        annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = false),
+        generateOutputSchema = true,
+    )
+    fun wait(
+        @McpToolParam(description = "Positive wait duration in seconds, up to 300.")
+        durationSeconds: Double,
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "system.wait",
+        context = mapOf("duration_seconds" to durationSeconds),
+    ) {
+        waitService.wait(durationSeconds)
     }
 
     @McpTool(

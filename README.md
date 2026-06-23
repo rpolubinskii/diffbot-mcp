@@ -18,7 +18,9 @@ Tools:
 - `nav.get_imu`
 - `nav.move_to`
 - `nav.turn`
+- `nav.cancel_goal`
 - `nav.stop`
+- `system.wait`
 - `speak.say`
 - `memory.retrieve`
 - `memory.memorize`
@@ -61,6 +63,10 @@ diffbot.debug.enabled=true
 
 The tool accepts a signed distance in meters, an optional positive speed magnitude (default `0.15` m/s), and an
 optional timeout (default `30` seconds). Positive distances move forward and negative distances move backward.
+
+`nav.cancel_goal` cancels only the last `NavigateToPose` goal remembered by `diffbot-mcp`. Use `nav.stop` when the
+robot should also receive zero velocity commands. `system.wait` blocks the current tool call for a positive duration
+up to 300 seconds.
 
 Configure `diffbot-audio` separately. `speak.say` calls its streaming gRPC `Speak` RPC and waits for `FINISHED` or `FAILED` before
 returning:

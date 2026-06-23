@@ -11,7 +11,7 @@ import kotlin.math.sin
 
 @Service
 class RobotStateService(
-    private val ros: RosMcpGateway,
+    private val ros: RosToolCaller,
     private val properties: DiffbotProperties,
 ) {
     fun cameraImage(timeoutSeconds: Double? = null): Map<String, Any?> {
