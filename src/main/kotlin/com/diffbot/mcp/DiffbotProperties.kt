@@ -18,8 +18,9 @@ class DiffbotProperties {
     var futureServices: FutureServices = FutureServices()
 
     class Memory {
+        var connectionName: String = "diffbot-memory"
         // Substring matched (case-insensitive) against the upstream MCP server's
-        // reported name to pick the diffbot-memory client among configured connections.
+        // reported name if the configured connection name is unavailable.
         var serverNameMatch: String = "graphiti"
         // Graph namespace; must match diffbot-memory's GRAPHITI_GROUP_ID.
         var groupId: String = "diffbot"

@@ -63,7 +63,10 @@ class MemoryGateway(
             toolCallLogger.log(
                 direction = "outbound",
                 tool = tool,
-                context = mapOf("server" to safeServerName(client)),
+                context = mapOf(
+                    "client" to safeClientName(client),
+                    "server" to safeServerName(client),
+                ),
             ) {
                 if (!client.isInitialized) {
                     client.initialize()
@@ -86,13 +89,23 @@ class MemoryGateway(
         selected.get()?.let { return it }
         val clients = clientsProvider.ifAvailable ?: emptyList()
         val match = clients.firstOrNull {
-            safeServerName(it).contains(properties.memory.serverNameMatch, ignoreCase = true)
+            safeClientName(it).contains(properties.memory.connectionName, ignoreCase = true)
         }
+            ?: clients.firstOrNull {
+                safeServerName(it).contains(properties.memory.serverNameMatch, ignoreCase = true)
+            }
         if (match != null) {
             selected.compareAndSet(null, match)
         }
         return match
     }
+
+    private fun safeClientName(client: McpSyncClient): String =
+        try {
+            client.clientInfo?.name() ?: "unknown"
+        } catch (_: Exception) {
+            "unknown"
+        }
 
     private fun safeServerName(client: McpSyncClient): String =
         try {
