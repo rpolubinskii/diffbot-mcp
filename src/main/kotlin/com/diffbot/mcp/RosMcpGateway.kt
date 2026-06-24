@@ -29,6 +29,8 @@ class RosMcpGateway(
         return mapOf(
             "configured" to (selected != null),
             "client_count" to clients.size,
+            "client_names" to configuredClientNames(),
+            "selected_client" to selected?.let { safeClientName(it) },
             "selected_server" to selected?.let { safeServerName(it) },
             "rosbridge" to mapOf(
                 "ip" to properties.rosbridge.ip,
@@ -160,6 +162,7 @@ class RosMcpGateway(
         direction = "outbound",
         tool = tool,
         context = mapOf(
+            "client" to safeClientName(client),
             "server" to safeServerName(client),
             "argument_names" to arguments.keys.sorted().joinToString(","),
         ),
@@ -201,11 +204,22 @@ class RosMcpGateway(
             return null
         }
 
-        val selected = clients.firstOrNull { safeServerName(it).contains(properties.rosMcpConnectionName, ignoreCase = true) }
-            ?: clients.first()
+        val selected = clients.firstOrNull { safeClientName(it).contains(properties.rosMcpConnectionName, ignoreCase = true) }
+            ?: clients.firstOrNull { safeServerName(it).contains(properties.rosMcpConnectionName, ignoreCase = true) }
+            ?: clients.singleOrNull()
         selectedClient.compareAndSet(null, selected)
         return selected
     }
+
+    private fun configuredClientNames(): List<String> =
+        (clientsProvider.ifAvailable ?: emptyList()).map { safeClientName(it) }
+
+    private fun safeClientName(client: McpSyncClient): String =
+        try {
+            client.clientInfo?.name() ?: "unknown"
+        } catch (_: Exception) {
+            "unknown"
+        }
 
     private fun safeServerName(client: McpSyncClient): String =
         try {
