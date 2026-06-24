@@ -15,6 +15,7 @@ class DiffbotMcpSurface(
     private val waitService: WaitService,
     private val audio: AudioClientService,
     private val speechAsk: SpeechAskService,
+    private val memory: MemoryGateway,
     private val toolCallLogger: McpToolCallLogger,
 ) {
     private val mapper = ObjectMapper()
@@ -224,38 +225,38 @@ class DiffbotMcpSurface(
     }
 
     @McpTool(
-        name = "memory.retrieve",
-        description = "Retrieve memory using the future diffbot-rag backend.",
+        name = "memory.recall",
+        description = "Recall relevant facts from long-term memory for a natural-language query.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = false),
         generateOutputSchema = true,
         metaProvider = GenericToolCategory::class,
     )
-    fun retrieveMemory(
-        @McpToolParam(description = "Memory query.")
+    fun recallMemory(
+        @McpToolParam(description = "What to recall, in natural language.")
         query: String,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
-        tool = "memory.retrieve",
+        tool = "memory.recall",
         context = mapOf("query_length" to query.length),
     ) {
-        GatewayResult.backendUnavailable("diffbot-rag") + mapOf("query" to query)
+        memory.recall(query)
     }
 
     @McpTool(
-        name = "memory.memorize",
-        description = "Store memory using the future diffbot-rag backend.",
+        name = "memory.remember",
+        description = "Store a fact or observation in long-term memory for future recall.",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = false),
         generateOutputSchema = true,
         metaProvider = GenericToolCategory::class,
     )
-    fun memorize(
-        @McpToolParam(description = "Memory content to store.")
+    fun rememberMemory(
+        @McpToolParam(description = "The fact or observation to remember.")
         content: String,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
-        tool = "memory.memorize",
+        tool = "memory.remember",
         context = mapOf("content_length" to content.length),
     ) {
-        GatewayResult.backendUnavailable("diffbot-rag") + mapOf("content" to content)
+        memory.remember(content)
     }
 }

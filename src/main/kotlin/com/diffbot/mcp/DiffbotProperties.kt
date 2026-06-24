@@ -14,7 +14,17 @@ class DiffbotProperties {
     var actions: Actions = Actions()
     var services: Services = Services()
     var audio: Audio = Audio()
+    var memory: Memory = Memory()
     var futureServices: FutureServices = FutureServices()
+
+    class Memory {
+        // Substring matched (case-insensitive) against the upstream MCP server's
+        // reported name to pick the diffbot-memory client among configured connections.
+        var serverNameMatch: String = "graphiti"
+        // Graph namespace; must match diffbot-memory's GRAPHITI_GROUP_ID.
+        var groupId: String = "diffbot"
+        var recallMaxFacts: Int = 10
+    }
 
     class Debug {
         var enabled: Boolean = false
@@ -55,6 +65,5 @@ class DiffbotProperties {
 
     class FutureServices {
         var vlmConfigured: Boolean = false
-        var ragConfigured: Boolean = false
     }
 }
