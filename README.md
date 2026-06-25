@@ -5,14 +5,10 @@ backend instead of exposing the full ROS graph as normal agent tools.
 
 ## MCP Surface
 
-Resources:
-
-- `robot://status`
-- `robot://diagnostics/ros-summary`
-- `robot://diagnostics/ros-raw`
-
 Tools:
 
+- `robot.get_status`
+- `robot.get_diagnostics`
 - `vision.get_camera_image`
 - `nav.get_pose`
 - `nav.get_imu`
@@ -22,8 +18,9 @@ Tools:
 - `nav.stop`
 - `system.wait`
 - `speak.say`
-- `memory.retrieve`
-- `memory.memorize`
+- `speak.ask`
+- `memory.recall`
+- `memory.remember`
 
 Debug mode can additionally expose:
 

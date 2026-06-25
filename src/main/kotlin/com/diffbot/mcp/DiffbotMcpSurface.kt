@@ -1,12 +1,10 @@
 package com.diffbot.mcp
 
 import io.modelcontextprotocol.spec.McpSchema
-import org.springframework.ai.mcp.annotation.McpResource
 import org.springframework.ai.mcp.annotation.McpTool
 import org.springframework.ai.mcp.annotation.McpToolParam
 import org.springframework.ai.mcp.annotation.context.McpSyncRequestContext
 import org.springframework.stereotype.Component
-import tools.jackson.databind.ObjectMapper
 
 @Component
 class DiffbotMcpSurface(
@@ -18,32 +16,34 @@ class DiffbotMcpSurface(
     private val memory: MemoryGateway,
     private val toolCallLogger: McpToolCallLogger,
 ) {
-    private val mapper = ObjectMapper()
-
-    @McpResource(
-        name = "robot status",
-        uri = "robot://status",
-        description = "Compact robot state for one command turn. Excludes raw images, lidar, full ROS graph dumps, and large diagnostics.",
-        mimeType = "application/json",
+    @McpTool(
+        name = "robot.get_status",
+        description = "Return compact robot state for one command turn. Excludes raw images, lidar, full ROS graph dumps, and large diagnostics.",
+        annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
+        generateOutputSchema = true,
+        metaProvider = StatusCategory::class,
     )
-    fun robotStatus(): String = mapper.writeValueAsString(state.compactStatus())
+    fun getRobotStatus(): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "robot.get_status",
+    ) {
+        state.compactStatus()
+    }
 
-    @McpResource(
-        name = "ROS summary",
-        uri = "robot://diagnostics/ros-summary",
-        description = "Summarized ROS graph and key topic availability from ros-mcp.",
-        mimeType = "application/json",
+    // TODO: restore raw diagnostics?
+    @McpTool(
+        name = "robot.get_diagnostics",
+        description = "Return summarized ROS graph and key topic availability from ros-mcp.",
+        annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
+        generateOutputSchema = true,
+        metaProvider = StatusCategory::class,
     )
-    fun rosSummary(): String = mapper.writeValueAsString(state.rosSummary(includeRawLists = false))
-
-    // TODO: decide what to do later. disabled for now
-    //	@McpResource(
-    //		name = "raw ROS diagnostics",
-    //		uri = "robot://diagnostics/ros-raw",
-    //		description = "Advanced escape hatch for low-level ROS inspection through ros-mcp.",
-    //		mimeType = "application/json",
-    //	)
-    fun rosRaw(): String = mapper.writeValueAsString(state.rosSummary(includeRawLists = true))
+    fun getRobotDiagnostics(): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "robot.get_diagnostics",
+    ) {
+        state.rosSummary(includeRawLists = false)
+    }
 
     @McpTool(
         name = "vision.get_camera_image",
