@@ -163,6 +163,7 @@ class DiffbotMcpSurface(
         description = "Cancel the last remembered Nav2 NavigateToPose goal without publishing velocity stop commands.",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, idempotentHint = true, openWorldHint = true),
         generateOutputSchema = true,
+        metaProvider = SafetyCategory::class,
     )
     fun cancelNavigationGoal(): Map<String, Any?> = toolCallLogger.log(direction = "inbound", tool = "nav.cancel_goal") {
         navigation.cancelNavigateGoal()
@@ -173,6 +174,7 @@ class DiffbotMcpSurface(
         description = "Block this tool call for a fixed duration in seconds.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = false),
         generateOutputSchema = true,
+        metaProvider = GenericToolCategory::class,
     )
     fun wait(
         @McpToolParam(description = "Positive wait duration in seconds, up to 300.")

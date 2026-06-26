@@ -2,8 +2,9 @@ package com.diffbot.mcp
 
 import org.springframework.ai.mcp.annotation.context.MetaProvider
 
-// CATEGORY_KEY and the category strings are a contract with diffbot-agent
-// (openai_agents_runtime.TOOL_CATEGORY_META_KEY, episode.TOOL_CATEGORIES).
+// CATEGORY_KEY and the category strings are the contract with diffbot-agent
+// (openai_agents_runtime.TOOL_CATEGORY_META_KEY); the agent reads these verbatim
+// and does not classify tools itself.
 const val CATEGORY_KEY: String = "diffbot.dev/category"
 
 abstract class ToolCategoryMeta(private val category: String) : MetaProvider {
