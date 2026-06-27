@@ -14,8 +14,8 @@ class DiffbotProperties {
     var actions: Actions = Actions()
     var services: Services = Services()
     var audio: Audio = Audio()
+    var semantic: Semantic = Semantic()
     var memory: Memory = Memory()
-    var futureServices: FutureServices = FutureServices()
 
     class Memory {
         var connectionName: String = "diffbot-memory"
@@ -64,7 +64,9 @@ class DiffbotProperties {
         var deadlineSeconds: Double = 60.0
     }
 
-    class FutureServices {
-        var vlmConfigured: Boolean = false
+    class Semantic {
+        var host: String = "192.168.0.176"
+        var port: Int = 50053
+        var deadlineSeconds: Double = 10.0
     }
 }

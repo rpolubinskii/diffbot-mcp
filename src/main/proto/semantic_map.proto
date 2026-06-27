@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package diffbot.semantic.v1;
+
+option java_multiple_files = true;
+option java_package = "com.diffbot.semantic.v1";
+
+import "google/protobuf/timestamp.proto";
+
+// Backend-agnostic semantic-map contract. Speaks in queries and answers, never
+// in any backend's concepts (DualMap, OneMap, ...). All coordinates are in the
+// robot's `map` frame so a Match position is directly usable with nav.move_to.
+service SemanticMap {
+  rpc Find(FindRequest) returns (FindResponse);                          // text -> located matches
+  rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse);     // capped inventory snapshot
+  rpc DescribeNear(DescribeNearRequest) returns (DescribeNearResponse);  // what is around a point
+  rpc GetStatus(GetStatusRequest) returns (GetStatusResponse);           // map health / coverage
+}
+
+message Pose2D {
+  float x = 1;
+  float y = 2;
+  float yaw = 3;  // radians; unused for object positions
+}
+
+message Match {
+  string label = 1;                          // best-guess name
+  float confidence = 2;                      // normalized 0..1 (backend score mapped)
+  Pose2D position = 3;                        // map frame; z/bbox carried in metadata
+  google.protobuf.Timestamp last_seen = 4;   // staleness signal for the caller
+  string backend = 5;                        // "fake" | "dualmap" | "onemap"
+  map<string, string> metadata = 6;          // raw_similarity, z, bbox, distance_m, ...
+}
+
+message FindRequest {
+  string query = 1;
+  int32 top_k = 2;          // 0 -> server default
+  float min_confidence = 3; // 0 -> server default
+}
+
+message FindResponse {
+  repeated Match matches = 1;
+}
+
+message ListObjectsRequest {
+  int32 limit = 1;  // 0 -> server default cap
+}
+
+message ListObjectsResponse {
+  repeated Match objects = 1;
+  int32 total_tracked = 2;  // may exceed objects.size when capped
+}
+
+message DescribeNearRequest {
+  Pose2D point = 1;   // map frame; yaw ignored
+  float radius = 2;   // meters; 0 -> server default
+  int32 limit = 3;    // 0 -> server default cap
+}
+
+message DescribeNearResponse {
+  repeated Match objects = 1;  // metadata.distance_m set, nearest first
+}
+
+message GetStatusRequest {}
+
+message GetStatusResponse {
+  bool ready = 1;
+  string backend = 2;
+  string map_frame = 3;
+  int64 frames_processed = 4;
+  int32 objects_tracked = 5;
+  float last_update_age_s = 6;  // age of the most recent map update; <0 if never
+  bool pose_feed_live = 7;
+  string detail = 8;
+}
