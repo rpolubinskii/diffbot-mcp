@@ -21,6 +21,7 @@ import kotlin.math.hypot
 class SemanticClientService(
     private val properties: DiffbotProperties,
     private val state: RobotStateService,
+    private val ros: RosToolCaller,
 ) : DisposableBean {
     @Volatile
     private var channel: ManagedChannel? = null
@@ -133,7 +134,28 @@ class SemanticClientService(
     private fun currentMapPoseIfNeeded(matchCount: Int): SemanticRobotPose? =
         if (matchCount > 0) currentMapPose() else null
 
-    private fun currentMapPose(): SemanticRobotPose? {
+    private fun currentMapPose(): SemanticRobotPose? =
+        currentSemanticPose() ?: currentNavPose()
+
+    private fun currentSemanticPose(): SemanticRobotPose? {
+        val topic = properties.semantic.currentPoseTopic.trim()
+        if (topic.isEmpty()) {
+            return null
+        }
+        val result = ros.call(
+            "subscribe_once",
+            mapOf(
+                "topic" to topic,
+                "msg_type" to "nav_msgs/msg/Odometry",
+                "timeout" to properties.semantic.currentPoseTimeoutSeconds,
+                "expects_image" to "false",
+            ),
+        )
+        val msg = result["msg"] as? Map<*, *> ?: return null
+        return semanticRobotPoseFromOdometry(msg, topic)
+    }
+
+    private fun currentNavPose(): SemanticRobotPose? {
         val pose = state.pose(timeoutSeconds = 1.0)
         if (pose["ok"] != true || pose["frame_id"] != "map") {
             return null
@@ -149,6 +171,18 @@ private const val SEMANTIC_GOAL_STANDOFF_M = 0.8
 private const val MIN_APPROACH_VECTOR_M = 0.05
 
 internal data class SemanticRobotPose(val x: Double, val y: Double, val source: String?)
+
+internal fun semanticRobotPoseFromOdometry(msg: Map<*, *>, topic: String): SemanticRobotPose? {
+    if (msg.path("header", "frame_id") != "map") {
+        return null
+    }
+    val pose = msg["pose"] as? Map<*, *> ?: return null
+    val nestedPose = pose["pose"] as? Map<*, *> ?: pose
+    val position = nestedPose["position"] as? Map<*, *> ?: return null
+    val x = (position["x"] as? Number)?.toDouble()?.takeIf(Double::isFinite) ?: return null
+    val y = (position["y"] as? Number)?.toDouble()?.takeIf(Double::isFinite) ?: return null
+    return SemanticRobotPose(x, y, "semantic_current_pose:$topic")
+}
 
 internal fun matchToMap(match: Match, currentPose: SemanticRobotPose? = null): Map<String, Any?> =
     linkedMapOf(
@@ -189,4 +223,12 @@ private fun suggestedGoal(match: Match, currentPose: SemanticRobotPose?): Map<St
         "source" to "current_pose_to_object",
         "pose_source" to currentPose.source,
     )
+}
+
+private fun Map<*, *>.path(vararg keys: String): Any? {
+    var current: Any? = this
+    for (key in keys) {
+        current = (current as? Map<*, *>)?.get(key) ?: return null
+    }
+    return current
 }

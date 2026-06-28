@@ -39,4 +39,34 @@ class SemanticClientServiceTest {
         assertEquals(2.0f, mapped["x"])
         assertEquals(2.0f, mapped["y"])
     }
+
+    @Test
+    fun `semanticRobotPoseFromOdometry accepts map frame odometry`() {
+        val pose = semanticRobotPoseFromOdometry(
+            mapOf(
+                "header" to mapOf("frame_id" to "map"),
+                "pose" to mapOf(
+                    "pose" to mapOf(
+                        "position" to mapOf("x" to 1.5, "y" to -0.25),
+                    ),
+                ),
+            ),
+            "/dualmap/odom",
+        )
+
+        assertEquals(SemanticRobotPose(1.5, -0.25, "semantic_current_pose:/dualmap/odom"), pose)
+    }
+
+    @Test
+    fun `semanticRobotPoseFromOdometry rejects non map frame odometry`() {
+        val pose = semanticRobotPoseFromOdometry(
+            mapOf(
+                "header" to mapOf("frame_id" to "odom"),
+                "pose" to mapOf("pose" to mapOf("position" to mapOf("x" to 1.5, "y" to -0.25))),
+            ),
+            "/odom",
+        )
+
+        assertNull(pose)
+    }
 }

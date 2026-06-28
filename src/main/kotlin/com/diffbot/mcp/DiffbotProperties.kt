@@ -68,5 +68,7 @@ class DiffbotProperties {
         var host: String = "192.168.0.176"
         var port: Int = 50053
         var deadlineSeconds: Double = 10.0
+        var currentPoseTopic: String = "/dualmap/odom"
+        var currentPoseTimeoutSeconds: Double = 1.0
     }
 }
