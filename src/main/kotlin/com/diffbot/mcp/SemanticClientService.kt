@@ -14,10 +14,13 @@ import org.springframework.beans.factory.DisposableBean
 import org.springframework.stereotype.Service
 import java.time.Instant
 import java.util.concurrent.TimeUnit
+import kotlin.math.atan2
+import kotlin.math.hypot
 
 @Service
 class SemanticClientService(
     private val properties: DiffbotProperties,
+    private val state: RobotStateService,
 ) : DisposableBean {
     @Volatile
     private var channel: ManagedChannel? = null
@@ -34,9 +37,10 @@ class SemanticClientService(
             .build()
         return guarded { stub ->
             val response = stub.find(request)
+            val currentPose = currentMapPoseIfNeeded(response.matchesCount)
             GatewayResult.ok(
                 mapOf(
-                    "matches" to response.matchesList.map(::matchToMap),
+                    "matches" to response.matchesList.map { matchToMap(it, currentPose) },
                     "count" to response.matchesCount,
                 ),
             )
@@ -47,9 +51,10 @@ class SemanticClientService(
         val request = ListObjectsRequest.newBuilder().setLimit(limit ?: 0).build()
         return guarded { stub ->
             val response = stub.listObjects(request)
+            val currentPose = currentMapPoseIfNeeded(response.objectsCount)
             GatewayResult.ok(
                 mapOf(
-                    "objects" to response.objectsList.map(::matchToMap),
+                    "objects" to response.objectsList.map { matchToMap(it, currentPose) },
                     "total_tracked" to response.totalTracked,
                 ),
             )
@@ -64,7 +69,8 @@ class SemanticClientService(
             .build()
         return guarded { stub ->
             val response = stub.describeNear(request)
-            GatewayResult.ok(mapOf("objects" to response.objectsList.map(::matchToMap)))
+            val currentPose = currentMapPoseIfNeeded(response.objectsCount)
+            GatewayResult.ok(mapOf("objects" to response.objectsList.map { matchToMap(it, currentPose) }))
         }
     }
 
@@ -123,15 +129,35 @@ class SemanticClientService(
     override fun destroy() {
         channel?.shutdownNow()?.awaitTermination(2, TimeUnit.SECONDS)
     }
+
+    private fun currentMapPoseIfNeeded(matchCount: Int): SemanticRobotPose? =
+        if (matchCount > 0) currentMapPose() else null
+
+    private fun currentMapPose(): SemanticRobotPose? {
+        val pose = state.pose(timeoutSeconds = 1.0)
+        if (pose["ok"] != true || pose["frame_id"] != "map") {
+            return null
+        }
+        val position = pose["position"] as? Map<*, *> ?: return null
+        val x = (position["x"] as? Number)?.toDouble()?.takeIf(Double::isFinite) ?: return null
+        val y = (position["y"] as? Number)?.toDouble()?.takeIf(Double::isFinite) ?: return null
+        return SemanticRobotPose(x, y, pose["source"]?.toString())
+    }
 }
 
-private fun matchToMap(match: Match): Map<String, Any?> =
+private const val SEMANTIC_GOAL_STANDOFF_M = 0.8
+private const val MIN_APPROACH_VECTOR_M = 0.05
+
+internal data class SemanticRobotPose(val x: Double, val y: Double, val source: String?)
+
+internal fun matchToMap(match: Match, currentPose: SemanticRobotPose? = null): Map<String, Any?> =
     linkedMapOf(
         "label" to match.label,
         "confidence" to match.confidence,
         "x" to match.position.x,
         "y" to match.position.y,
         "yaw" to match.position.yaw,
+        "suggested_goal" to suggestedGoal(match, currentPose),
         "last_seen" to if (match.hasLastSeen()) {
             Instant.ofEpochSecond(match.lastSeen.seconds, match.lastSeen.nanos.toLong()).toString()
         } else {
@@ -140,3 +166,27 @@ private fun matchToMap(match: Match): Map<String, Any?> =
         "backend" to match.backend,
         "metadata" to match.metadataMap,
     )
+
+private fun suggestedGoal(match: Match, currentPose: SemanticRobotPose?): Map<String, Any?>? {
+    currentPose ?: return null
+    val objectX = match.position.x.toDouble()
+    val objectY = match.position.y.toDouble()
+    val dx = currentPose.x - objectX
+    val dy = currentPose.y - objectY
+    val distance = hypot(dx, dy)
+    if (!distance.isFinite() || distance < MIN_APPROACH_VECTOR_M) {
+        return null
+    }
+
+    val scale = SEMANTIC_GOAL_STANDOFF_M / distance
+    val goalX = objectX + dx * scale
+    val goalY = objectY + dy * scale
+    return linkedMapOf(
+        "x" to goalX,
+        "y" to goalY,
+        "yaw" to atan2(objectY - goalY, objectX - goalX),
+        "standoff_m" to SEMANTIC_GOAL_STANDOFF_M,
+        "source" to "current_pose_to_object",
+        "pose_source" to currentPose.source,
+    )
+}

@@ -9,7 +9,7 @@ import "google/protobuf/timestamp.proto";
 
 // Backend-agnostic semantic-map contract. Speaks in queries and answers, never
 // in any backend's concepts (DualMap, OneMap, ...). All coordinates are in the
-// robot's `map` frame so a Match position is directly usable with nav.move_to.
+// robot's `map` frame; Match.position is an object location, not a robot goal.
 service SemanticMap {
   rpc Find(FindRequest) returns (FindResponse);                          // text -> located matches
   rpc ListObjects(ListObjectsRequest) returns (ListObjectsResponse);     // capped inventory snapshot
@@ -20,7 +20,7 @@ service SemanticMap {
 message Pose2D {
   float x = 1;
   float y = 2;
-  float yaw = 3;  // radians; unused for object positions
+  float yaw = 3;  // radians; meaningful only when the pose is a robot goal
 }
 
 message Match {

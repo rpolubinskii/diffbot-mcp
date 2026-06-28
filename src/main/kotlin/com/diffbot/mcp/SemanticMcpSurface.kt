@@ -12,8 +12,10 @@ class SemanticMcpSurface(
     @McpTool(
         name = "semantic.find",
         description = "Find mapped objects matching a description; returns ranked matches with map-frame " +
-            "coordinates usable with nav.move_to. Results may be stale or low-confidence and an empty " +
-            "result (no match) is a normal answer. Navigation targets still pass standard goal validation.",
+            "object coordinates plus a suggested_goal standoff pose for nav.move_to when the current map pose " +
+            "is available. Use suggested_goal for navigation, not the raw object centroid. Results may be stale " +
+            "or low-confidence and an empty result (no match) is a normal answer. Navigation targets still pass " +
+            "standard goal validation.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
@@ -35,7 +37,8 @@ class SemanticMcpSurface(
 
     @McpTool(
         name = "semantic.list_objects",
-        description = "Return a compact, capped inventory snapshot of objects currently in the semantic map.",
+        description = "Return a compact, capped inventory snapshot of objects currently in the semantic map. " +
+            "Each object includes a suggested_goal standoff pose for nav.move_to when the current map pose is available.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
@@ -53,7 +56,8 @@ class SemanticMcpSurface(
 
     @McpTool(
         name = "semantic.describe_near",
-        description = "List mapped objects around a map-frame point (pairs with nav.get_pose), nearest first.",
+        description = "List mapped objects around a map-frame point (pairs with nav.get_pose), nearest first. " +
+            "Use each object's suggested_goal for navigation when present, not the raw object centroid.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
