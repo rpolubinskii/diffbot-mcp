@@ -15,7 +15,10 @@ class SemanticMcpSurface(
             "object coordinates plus a suggested_goal standoff pose for nav.move_to when the current map pose " +
             "is available. Use suggested_goal for navigation, not the raw object centroid. Results may be stale " +
             "or low-confidence and an empty result (no match) is a normal answer. Navigation targets still pass " +
-            "standard goal validation.",
+            "standard goal validation. Set include_provisional to also search objects still forming in the " +
+            "local map that the map has not validated (often small or movable items it may never keep); those " +
+            "carry metadata.state=provisional (plus is_low_mobility, status, observed_num) and are low-trust — " +
+            "their position and label can churn or disappear. Prefer a normal (validated) match when one exists.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
@@ -27,18 +30,30 @@ class SemanticMcpSurface(
         topK: Int?,
         @McpToolParam(description = "Minimum normalized confidence in 0..1. Omit for the server default.", required = false)
         minConfidence: Double?,
+        @McpToolParam(
+            description = "Also return un-validated provisional objects from the local map (tagged metadata.state=provisional). Omit for validated objects only.",
+            required = false,
+        )
+        includeProvisional: Boolean?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
         tool = "semantic.find",
-        context = mapOf("query_length" to query.length, "top_k" to topK, "min_confidence" to minConfidence),
+        context = mapOf(
+            "query_length" to query.length,
+            "top_k" to topK,
+            "min_confidence" to minConfidence,
+            "include_provisional" to includeProvisional,
+        ),
     ) {
-        semantic.find(query, topK, minConfidence)
+        semantic.find(query, topK, minConfidence, includeProvisional)
     }
 
     @McpTool(
         name = "semantic.list_objects",
         description = "Return a compact, capped inventory snapshot of objects currently in the semantic map. " +
-            "Each object includes a suggested_goal standoff pose for nav.move_to when the current map pose is available.",
+            "Each object includes a suggested_goal standoff pose for nav.move_to when the current map pose is available. " +
+            "Set include_provisional to also list un-validated local-map objects (tagged metadata.state=provisional), " +
+            "which are low-trust and may never be kept.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
@@ -46,12 +61,17 @@ class SemanticMcpSurface(
     fun listObjects(
         @McpToolParam(description = "Max objects to return. Omit for the server default cap.", required = false)
         limit: Int?,
+        @McpToolParam(
+            description = "Also list un-validated provisional objects from the local map (tagged metadata.state=provisional). Omit for validated objects only.",
+            required = false,
+        )
+        includeProvisional: Boolean?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
         tool = "semantic.list_objects",
-        context = mapOf("limit" to limit),
+        context = mapOf("limit" to limit, "include_provisional" to includeProvisional),
     ) {
-        semantic.listObjects(limit)
+        semantic.listObjects(limit, includeProvisional)
     }
 
     @McpTool(

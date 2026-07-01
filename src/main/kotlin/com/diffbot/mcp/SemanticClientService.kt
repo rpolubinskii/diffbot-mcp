@@ -26,7 +26,7 @@ class SemanticClientService(
     @Volatile
     private var channel: ManagedChannel? = null
 
-    fun find(query: String, topK: Int?, minConfidence: Double?): Map<String, Any?> {
+    fun find(query: String, topK: Int?, minConfidence: Double?, includeProvisional: Boolean?): Map<String, Any?> {
         val normalized = query.trim()
         if (normalized.isEmpty()) {
             return GatewayResult.error("invalid_request", "query must not be blank")
@@ -35,6 +35,7 @@ class SemanticClientService(
             .setQuery(normalized)
             .setTopK(topK ?: 0)
             .setMinConfidence((minConfidence ?: 0.0).toFloat())
+            .setIncludeProvisional(includeProvisional ?: true)
             .build()
         return guarded { stub ->
             val response = stub.find(request)
@@ -48,8 +49,11 @@ class SemanticClientService(
         }
     }
 
-    fun listObjects(limit: Int?): Map<String, Any?> {
-        val request = ListObjectsRequest.newBuilder().setLimit(limit ?: 0).build()
+    fun listObjects(limit: Int?, includeProvisional: Boolean?): Map<String, Any?> {
+        val request = ListObjectsRequest.newBuilder()
+            .setLimit(limit ?: 0)
+            .setIncludeProvisional(includeProvisional ?: false)
+            .build()
         return guarded { stub ->
             val response = stub.listObjects(request)
             val currentPose = currentMapPoseIfNeeded(response.objectsCount)
