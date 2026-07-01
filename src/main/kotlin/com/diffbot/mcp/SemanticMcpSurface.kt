@@ -11,29 +11,21 @@ class SemanticMcpSurface(
 ) {
     @McpTool(
         name = "semantic.find",
-        description = "Find mapped objects matching a description; returns ranked matches with each object's " +
-            "map-frame coordinates (x, y). To navigate to one, pass its (x, y) to nav.plan_approach for a " +
-            "reachable standoff pose, then nav.move_to — do not send the raw object centroid to nav.move_to. " +
-            "Results may be stale or low-confidence and an empty result (no match) is a normal answer. By default " +
-            "this also returns objects still forming in the local map that the map has not validated (often small " +
-            "or movable items it may never keep); those carry metadata.state=provisional (plus is_low_mobility, " +
-            "status, observed_num) and are low-trust — their position and label can churn. Set validated_only=true " +
-            "to restrict to validated (promoted) objects.",
+        description = "Find mapped objects by description; returns matches with map-frame (x, y). To go to one, " +
+            "use nav.plan_approach then nav.move_to (not the raw x,y). Empty result = no match (normal). Includes " +
+            "low-trust provisional objects (metadata.state=provisional) by default; validated_only=true for confirmed only.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
     )
     fun find(
-        @McpToolParam(description = "What to look for, in natural language (e.g. \"couch\", \"coffee machine\").")
+        @McpToolParam(description = "What to look for, in natural language (e.g. \"couch\").")
         query: String,
-        @McpToolParam(description = "Max matches to return. Omit for the server default.", required = false)
+        @McpToolParam(description = "Max matches. Omit for default.", required = false)
         topK: Int?,
-        @McpToolParam(description = "Minimum normalized confidence in 0..1. Omit for the server default.", required = false)
+        @McpToolParam(description = "Min normalized confidence 0..1. Omit for default.", required = false)
         minConfidence: Double?,
-        @McpToolParam(
-            description = "Restrict to validated (promoted) objects only. Omit to also include low-trust provisional local-map objects (metadata.state=provisional).",
-            required = false,
-        )
+        @McpToolParam(description = "Confirmed objects only (omit to also include provisional).", required = false)
         validatedOnly: Boolean?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
@@ -50,21 +42,17 @@ class SemanticMcpSurface(
 
     @McpTool(
         name = "semantic.list_objects",
-        description = "Return a compact, capped inventory snapshot of objects currently in the semantic map, " +
-            "each with its map-frame coordinates (x, y). To navigate to one, pass its (x, y) to nav.plan_approach, " +
-            "then nav.move_to. By default this includes low-trust provisional local-map objects (tagged " +
-            "metadata.state=provisional), which may never be kept. Set validated_only=true for validated objects only.",
+        description = "Capped inventory of mapped objects with map-frame (x, y). Navigate via nav.plan_approach " +
+            "then nav.move_to. Includes provisional objects (metadata.state=provisional) by default; " +
+            "validated_only=true for confirmed only.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
     )
     fun listObjects(
-        @McpToolParam(description = "Max objects to return. Omit for the server default cap.", required = false)
+        @McpToolParam(description = "Max objects. Omit for default cap.", required = false)
         limit: Int?,
-        @McpToolParam(
-            description = "Restrict to validated (promoted) objects only. Omit to also list low-trust provisional local-map objects (metadata.state=provisional).",
-            required = false,
-        )
+        @McpToolParam(description = "Confirmed objects only (omit to also include provisional).", required = false)
         validatedOnly: Boolean?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
@@ -76,20 +64,20 @@ class SemanticMcpSurface(
 
     @McpTool(
         name = "semantic.describe_near",
-        description = "List mapped objects around a map-frame point (pairs with nav.get_pose), nearest first. " +
-            "To navigate to one, pass its (x, y) to nav.plan_approach for a reachable standoff pose, then nav.move_to.",
+        description = "Mapped objects near a map-frame point, nearest first (pairs with nav.get_pose). " +
+            "Navigate via nav.plan_approach then nav.move_to.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
     )
     fun describeNear(
-        @McpToolParam(description = "Map-frame x coordinate of the point to describe around.")
+        @McpToolParam(description = "Map-frame x of the query point.")
         x: Double,
-        @McpToolParam(description = "Map-frame y coordinate of the point to describe around.")
+        @McpToolParam(description = "Map-frame y of the query point.")
         y: Double,
-        @McpToolParam(description = "Search radius in meters. Omit for the server default.", required = false)
+        @McpToolParam(description = "Search radius (m). Omit for default.", required = false)
         radius: Double?,
-        @McpToolParam(description = "Max objects to return. Omit for the server default cap.", required = false)
+        @McpToolParam(description = "Max objects. Omit for default cap.", required = false)
         limit: Int?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
@@ -101,8 +89,8 @@ class SemanticMcpSurface(
 
     @McpTool(
         name = "semantic.status",
-        description = "Report semantic-map health: readiness, objects tracked, last-update age, and pose-feed " +
-            "liveness. Call this when finds fail to tell 'nothing matched' from 'the map is not ready'.",
+        description = "Semantic-map health: readiness, object count, last-update age, pose-feed liveness. " +
+            "Distinguishes 'no match' from 'map not ready'.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,

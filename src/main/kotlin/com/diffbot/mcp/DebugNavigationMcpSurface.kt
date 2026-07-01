@@ -13,7 +13,7 @@ class DebugNavigationMcpSurface(
 ) {
     @McpTool(
         name = "nav.drive_on_heading",
-        description = "Debug-only bounded relative drive using Nav2 collision checking. Positive distance moves forward and negative distance moves backward.",
+        description = "Debug: bounded relative drive (Nav2 collision-checked). +distance forward, -distance backward.",
         annotations = McpTool.McpAnnotations(
             readOnlyHint = false,
             destructiveHint = false,
@@ -23,11 +23,11 @@ class DebugNavigationMcpSurface(
         generateOutputSchema = true,
     )
     fun driveOnHeading(
-        @McpToolParam(description = "Signed travel distance in meters. Positive is forward and negative is backward.")
+        @McpToolParam(description = "Signed distance (m): + forward, - backward.")
         distanceMeters: Double,
-        @McpToolParam(description = "Optional positive speed magnitude in meters per second. Defaults to 0.15.", required = false)
+        @McpToolParam(description = "Speed magnitude (m/s). Default 0.15.", required = false)
         speedMetersPerSecond: Double?,
-        @McpToolParam(description = "Optional positive action timeout in seconds. Defaults to 30.", required = false)
+        @McpToolParam(description = "Action timeout (s). Default 30.", required = false)
         timeoutSeconds: Double?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",

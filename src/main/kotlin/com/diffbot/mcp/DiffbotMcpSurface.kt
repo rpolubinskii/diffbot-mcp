@@ -18,7 +18,7 @@ class DiffbotMcpSurface(
 ) {
     @McpTool(
         name = "robot.get_status",
-        description = "Return compact robot state for one command turn. Excludes raw images, lidar, full ROS graph dumps, and large diagnostics.",
+        description = "Compact robot state for one turn: pose, velocity, IMU, safety. No images/lidar/graph dumps.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = StatusCategory::class,
@@ -47,7 +47,7 @@ class DiffbotMcpSurface(
 
     @McpTool(
         name = "vision.get_camera_image",
-        description = "Capture and return the latest RealSense RGB image from /camera/camera/color/image_raw as MCP image content for direct multimodal analysis.",
+        description = "Capture the latest RealSense RGB image for multimodal analysis.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         metaProvider = VisionCategory::class,
     )
@@ -64,7 +64,7 @@ class DiffbotMcpSurface(
 
     @McpTool(
         name = "nav.get_pose",
-        description = "Return compact robot pose using localization pose when available, then odometry fallbacks with source metadata.",
+        description = "Robot pose (map frame) from localization, with odometry fallback and source metadata.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = StatusCategory::class,
@@ -82,7 +82,7 @@ class DiffbotMcpSurface(
 
     @McpTool(
         name = "nav.get_imu",
-        description = "Return compact IMU orientation, angular velocity, and linear acceleration from /imu/external/data_body.",
+        description = "IMU orientation, angular velocity, and linear acceleration.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = StatusCategory::class,
@@ -106,11 +106,11 @@ class DiffbotMcpSurface(
         metaProvider = NavigationCategory::class,
     )
     fun moveTo(
-        @McpToolParam(description = "Target x coordinate in the map frame.")
+        @McpToolParam(description = "Target map-frame x.")
         x: Double,
-        @McpToolParam(description = "Target y coordinate in the map frame.")
+        @McpToolParam(description = "Target map-frame y.")
         y: Double,
-        @McpToolParam(description = "Target yaw in radians.")
+        @McpToolParam(description = "Target yaw (radians).")
         yawRadians: Double,
         @McpToolParam(description = "Optional action timeout in seconds.", required = false)
         timeoutSeconds: Double?,
@@ -129,21 +129,19 @@ class DiffbotMcpSurface(
 
     @McpTool(
         name = "nav.plan_approach",
-        description = "Given a mapped object's map-frame (x, y), return a costmap-validated pose the robot can " +
-            "actually reach: a standoff facing the object, checked with Nav2's planner (obstacles, inflation, and " +
-            "reachability from the robot's current pose). Read-only — it plans, it does not move. On success returns " +
-            "reachable=true with a pose {x, y, yaw}; pass that pose to nav.move_to. Returns reachable=false when no " +
-            "approach can be planned (object blocked or boxed in) — don't call nav.move_to in that case.",
+        description = "Costmap-validated pose to reach a mapped object at map-frame (x, y): a standoff facing it, " +
+            "checked by Nav2's planner. Read-only (plans, doesn't move). reachable=true → pass pose{x,y,yaw} to " +
+            "nav.move_to; reachable=false → unreachable, don't move.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = NavigationCategory::class,
     )
     fun planApproach(
-        @McpToolParam(description = "Object x coordinate in the map frame (e.g. a semantic.find match's x).")
+        @McpToolParam(description = "Object map-frame x (e.g. a semantic.find match).")
         x: Double,
-        @McpToolParam(description = "Object y coordinate in the map frame (e.g. a semantic.find match's y).")
+        @McpToolParam(description = "Object map-frame y (e.g. a semantic.find match).")
         y: Double,
-        @McpToolParam(description = "Standoff distance from the object in meters. Omit for the server default.", required = false)
+        @McpToolParam(description = "Standoff distance (m). Omit for default.", required = false)
         standoff: Double?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
@@ -155,7 +153,7 @@ class DiffbotMcpSurface(
 
     @McpTool(
         name = "nav.turn",
-        description = "Perform a bounded in-place rotation through the Nav2 Spin action.",
+        description = "Bounded in-place rotation (Nav2 Spin).",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = NavigationCategory::class,
@@ -186,7 +184,7 @@ class DiffbotMcpSurface(
 
     @McpTool(
         name = "nav.cancel_goal",
-        description = "Cancel the last remembered Nav2 NavigateToPose goal without publishing velocity stop commands.",
+        description = "Cancel the last nav goal (no velocity stop command).",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = true, idempotentHint = true, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SafetyCategory::class,
