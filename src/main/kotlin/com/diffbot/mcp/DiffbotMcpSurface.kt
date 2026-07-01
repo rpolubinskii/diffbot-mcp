@@ -128,6 +128,32 @@ class DiffbotMcpSurface(
     }
 
     @McpTool(
+        name = "nav.plan_approach",
+        description = "Given a mapped object's map-frame (x, y), return a costmap-validated pose the robot can " +
+            "actually reach: a standoff facing the object, checked with Nav2's planner (obstacles, inflation, and " +
+            "reachability from the robot's current pose). Read-only — it plans, it does not move. On success returns " +
+            "reachable=true with a pose {x, y, yaw}; pass that pose to nav.move_to. Returns reachable=false when no " +
+            "approach can be planned (object blocked or boxed in) — don't call nav.move_to in that case.",
+        annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
+        generateOutputSchema = true,
+        metaProvider = NavigationCategory::class,
+    )
+    fun planApproach(
+        @McpToolParam(description = "Object x coordinate in the map frame (e.g. a semantic.find match's x).")
+        x: Double,
+        @McpToolParam(description = "Object y coordinate in the map frame (e.g. a semantic.find match's y).")
+        y: Double,
+        @McpToolParam(description = "Standoff distance from the object in meters. Omit for the server default.", required = false)
+        standoff: Double?,
+    ): Map<String, Any?> = toolCallLogger.log(
+        direction = "inbound",
+        tool = "nav.plan_approach",
+        context = mapOf("x" to x, "y" to y, "standoff" to standoff),
+    ) {
+        navigation.planApproach(x, y, standoff)
+    }
+
+    @McpTool(
         name = "nav.turn",
         description = "Perform a bounded in-place rotation through the Nav2 Spin action.",
         annotations = McpTool.McpAnnotations(readOnlyHint = false, destructiveHint = false, idempotentHint = false, openWorldHint = true),

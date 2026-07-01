@@ -13,6 +13,7 @@ class DiffbotProperties {
     var topics: Topics = Topics()
     var actions: Actions = Actions()
     var services: Services = Services()
+    var nav: Nav = Nav()
     var audio: Audio = Audio()
     var semantic: Semantic = Semantic()
     var memory: Memory = Memory()
@@ -51,6 +52,15 @@ class DiffbotProperties {
         var navigateToPose: String = "/navigate_to_pose"
         var spin: String = "/spin"
         var driveOnHeading: String = "/drive_on_heading"
+        var computePathToPose: String = "/compute_path_to_pose"
+    }
+
+    class Nav {
+        // Must match a planner id in Nav2's planner_server.planner_plugins.
+        var plannerId: String = "GridBased"
+        var approachStandoffM: Double = 0.8
+        var approachCandidates: Int = 8
+        var planTimeoutSeconds: Double = 5.0
     }
 
     class Services {

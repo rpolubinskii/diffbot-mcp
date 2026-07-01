@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 class NavigationServiceTest {
     private val properties = DiffbotProperties()
@@ -83,6 +86,51 @@ class NavigationServiceTest {
             .toSet()
         assertTrue(properties.topics.cmdVel in publishTopics)
         assertTrue(properties.topics.baseCmdVel in publishTopics)
+    }
+
+    @Test
+    fun `planApproach returns first reachable candidate facing the object`() {
+        // No pose source enqueued -> base bearing 0; candidate #1 (bearing 0) has no path,
+        // candidate #2 (+45 deg) returns a valid path.
+        ros.enqueue("send_action_goal", mapOf("ok" to true))
+        ros.enqueue(
+            "send_action_goal",
+            mapOf("ok" to true, "result" to mapOf("path" to mapOf("poses" to listOf(mapOf("x" to 1))))),
+        )
+
+        val result = navigation.planApproach(2.0, 0.0, 0.8)
+
+        assertEquals(true, result["ok"])
+        assertEquals(true, result["reachable"])
+        assertEquals(2, result["candidates_tried"])
+
+        @Suppress("UNCHECKED_CAST")
+        val pose = result["pose"] as Map<String, Any?>
+        assertEquals(2.0 + 0.8 * cos(PI / 4.0), pose["x"] as Double, 1e-6)
+        assertEquals(0.8 * sin(PI / 4.0), pose["y"] as Double, 1e-6)
+        assertEquals(-3.0 * PI / 4.0, pose["yaw"] as Double, 1e-6)
+
+        assertEquals(2, ros.calls.count { it.tool == "send_action_goal" })
+    }
+
+    @Test
+    fun `planApproach reports unreachable when no candidate plans`() {
+        // Nothing enqueued: every ComputePathToPose returns ok() with no path.
+        val result = navigation.planApproach(1.0, 1.0, null)
+
+        assertEquals(true, result["ok"])
+        assertEquals(false, result["reachable"])
+        assertEquals(8, result["candidates_tried"])
+    }
+
+    @Test
+    fun `planApproach surfaces planner_unavailable when ros is unreachable`() {
+        ros.enqueue("send_action_goal", GatewayResult.error("backend_unavailable", "ros-mcp not configured"))
+
+        val result = navigation.planApproach(1.0, 1.0, null)
+
+        assertEquals(false, result["ok"])
+        assertEquals("planner_unavailable", result["error_class"])
     }
 
     private data class ToolCall(val tool: String, val arguments: Map<String, Any?>)

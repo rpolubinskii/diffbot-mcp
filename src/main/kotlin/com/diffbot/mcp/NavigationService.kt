@@ -2,8 +2,12 @@ package com.diffbot.mcp
 
 import org.springframework.stereotype.Service
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.sin
 
 @Service
 class NavigationService(
@@ -48,6 +52,67 @@ class NavigationService(
         } else {
             GatewayResult.ok(mapOf("action" to properties.actions.navigateToPose, "goal" to goal, "ros" to result))
         }
+    }
+
+    fun planApproach(x: Double, y: Double, standoff: Double?): Map<String, Any?> {
+        if (!x.isFinite() || !y.isFinite()) {
+            return GatewayResult.error("unsafe_request", "Object position must use finite numeric values.")
+        }
+        val radius = standoff ?: properties.nav.approachStandoffM
+        if (!radius.isFinite() || radius <= 0.0) {
+            return GatewayResult.error("unsafe_request", "Standoff must be a finite, positive distance.")
+        }
+
+        // Ring of candidate standoff poses around the object, ordered so the side
+        // facing the robot is tried first. Nav2's planner is the authority on
+        // whether each is collision-free and reachable.
+        val bearings = candidateBearings(x, y, properties.nav.approachCandidates.coerceAtLeast(1))
+        var tried = 0
+        var transportFailures = 0
+        for (bearing in bearings) {
+            tried++
+            val candidateX = x + radius * cos(bearing)
+            val candidateY = y + radius * sin(bearing)
+            val yaw = state.normalizeRadians(atan2(y - candidateY, x - candidateX))
+            val result = computePath(candidateX, candidateY, yaw)
+
+            if (isValidPath(result)) {
+                return GatewayResult.ok(
+                    mapOf(
+                        "reachable" to true,
+                        "pose" to mapOf("x" to candidateX, "y" to candidateY, "yaw" to yaw),
+                        "standoff_m" to radius,
+                        "planner" to properties.nav.plannerId,
+                        "candidates_tried" to tried,
+                    ),
+                )
+            }
+            if (result["error_class"] == "backend_unavailable") {
+                return GatewayResult.error(
+                    "planner_unavailable",
+                    "ros-mcp is not connected; cannot reach Nav2 to validate an approach pose.",
+                    mapOf("ros" to result),
+                )
+            }
+            if (isTransportError(result)) {
+                transportFailures++
+            }
+        }
+
+        if (transportFailures == tried) {
+            return GatewayResult.error(
+                "planner_unavailable",
+                "Nav2 ComputePathToPose did not respond; cannot validate an approach pose.",
+            )
+        }
+        return GatewayResult.ok(
+            mapOf(
+                "reachable" to false,
+                "standoff_m" to radius,
+                "candidates_tried" to tried,
+                "detail" to "No collision-free, reachable approach pose found around the object.",
+            ),
+        )
     }
 
     fun turn(radians: Double, timeoutSeconds: Double?): Map<String, Any?> {
@@ -216,9 +281,88 @@ class NavigationService(
     private fun isToolError(result: Map<String, Any?>): Boolean =
         result["ok"] == false || result["error"] != null || result["is_error"] == true || result["success"] == false
 
+    // Bearings (object -> candidate) evenly spaced around the object, starting at the
+    // object -> robot direction (when known) and spiralling outward so the near side wins.
+    private fun candidateBearings(objX: Double, objY: Double, count: Int): List<Double> {
+        val step = 2.0 * PI / count
+        val base = robotBearing(objX, objY) ?: 0.0
+        val bearings = mutableListOf(base)
+        var k = 1
+        while (bearings.size < count) {
+            bearings += state.normalizeRadians(base + k * step)
+            if (bearings.size < count) {
+                bearings += state.normalizeRadians(base - k * step)
+            }
+            k++
+        }
+        return bearings
+    }
+
+    private fun robotBearing(objX: Double, objY: Double): Double? {
+        val pose = state.pose(timeoutSeconds = 1.0)
+        if (pose["ok"] != true || pose["frame_id"] != "map") return null
+        val position = pose["position"] as? Map<*, *> ?: return null
+        val robotX = (position["x"] as? Number)?.toDouble()?.takeIf(Double::isFinite) ?: return null
+        val robotY = (position["y"] as? Number)?.toDouble()?.takeIf(Double::isFinite) ?: return null
+        return atan2(robotY - objY, robotX - objX)
+    }
+
+    private fun computePath(x: Double, y: Double, yaw: Double): Map<String, Any?> {
+        val goal = mapOf(
+            "goal" to mapOf(
+                "header" to mapOf("frame_id" to "map"),
+                "pose" to mapOf(
+                    "position" to mapOf("x" to x, "y" to y, "z" to 0.0),
+                    "orientation" to state.quaternionFromYaw(yaw),
+                ),
+            ),
+            "planner_id" to properties.nav.plannerId,
+            // Plan from the robot's real TF pose, not a caller-supplied start.
+            "use_start" to false,
+        )
+        return ros.call(
+            "send_action_goal",
+            mapOf(
+                "action_name" to properties.actions.computePathToPose,
+                "action_type" to "nav2_msgs/action/ComputePathToPose",
+                "goal" to goal,
+                "timeout" to properties.nav.planTimeoutSeconds,
+            ),
+        )
+    }
+
+    private fun isValidPath(result: Map<String, Any?>): Boolean =
+        !isToolError(result) && findPoses(result).isNotEmpty()
+
+    // ComputePathToPose returns nav_msgs/Path; find its (possibly nested) `poses` list.
+    private fun findPoses(value: Any?): List<*> {
+        when (value) {
+            is Map<*, *> -> {
+                (value["poses"] as? List<*>)?.let { if (it.isNotEmpty()) return it }
+                for (nested in value.values) {
+                    val found = findPoses(nested)
+                    if (found.isNotEmpty()) return found
+                }
+            }
+            is List<*> -> for (nested in value) {
+                val found = findPoses(nested)
+                if (found.isNotEmpty()) return found
+            }
+        }
+        return emptyList<Any?>()
+    }
+
+    private fun isTransportError(result: Map<String, Any?>): Boolean =
+        result["error_class"] in TRANSPORT_ERROR_CLASSES
+
     private data class RememberedGoalCancellation(
         val actionName: String,
         val goalId: String,
         val result: Map<String, Any?>,
     )
+
+    private companion object {
+        // ros.call error classes that mean "ROS/planner unreachable", not "this goal failed".
+        val TRANSPORT_ERROR_CLASSES = setOf("backend_unavailable", "ros_graph_unavailable", "timeout")
+    }
 }

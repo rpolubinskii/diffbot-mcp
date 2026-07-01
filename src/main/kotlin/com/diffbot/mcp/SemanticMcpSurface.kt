@@ -11,14 +11,14 @@ class SemanticMcpSurface(
 ) {
     @McpTool(
         name = "semantic.find",
-        description = "Find mapped objects matching a description; returns ranked matches with map-frame " +
-            "object coordinates plus a suggested_goal standoff pose for nav.move_to when the current map pose " +
-            "is available. Use suggested_goal for navigation, not the raw object centroid. Results may be stale " +
-            "or low-confidence and an empty result (no match) is a normal answer. Navigation targets still pass " +
-            "standard goal validation. Set include_provisional to also search objects still forming in the " +
-            "local map that the map has not validated (often small or movable items it may never keep); those " +
-            "carry metadata.state=provisional (plus is_low_mobility, status, observed_num) and are low-trust — " +
-            "their position and label can churn or disappear. Prefer a normal (validated) match when one exists.",
+        description = "Find mapped objects matching a description; returns ranked matches with each object's " +
+            "map-frame coordinates (x, y). To navigate to one, pass its (x, y) to nav.plan_approach for a " +
+            "reachable standoff pose, then nav.move_to — do not send the raw object centroid to nav.move_to. " +
+            "Results may be stale or low-confidence and an empty result (no match) is a normal answer. By default " +
+            "this also returns objects still forming in the local map that the map has not validated (often small " +
+            "or movable items it may never keep); those carry metadata.state=provisional (plus is_low_mobility, " +
+            "status, observed_num) and are low-trust — their position and label can churn. Set validated_only=true " +
+            "to restrict to validated (promoted) objects.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
@@ -31,10 +31,10 @@ class SemanticMcpSurface(
         @McpToolParam(description = "Minimum normalized confidence in 0..1. Omit for the server default.", required = false)
         minConfidence: Double?,
         @McpToolParam(
-            description = "Also return un-validated provisional objects from the local map (tagged metadata.state=provisional). Omit for validated objects only.",
+            description = "Restrict to validated (promoted) objects only. Omit to also include low-trust provisional local-map objects (metadata.state=provisional).",
             required = false,
         )
-        includeProvisional: Boolean?,
+        validatedOnly: Boolean?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
         tool = "semantic.find",
@@ -42,18 +42,18 @@ class SemanticMcpSurface(
             "query_length" to query.length,
             "top_k" to topK,
             "min_confidence" to minConfidence,
-            "include_provisional" to includeProvisional,
+            "validated_only" to validatedOnly,
         ),
     ) {
-        semantic.find(query, topK, minConfidence, includeProvisional)
+        semantic.find(query, topK, minConfidence, validatedOnly)
     }
 
     @McpTool(
         name = "semantic.list_objects",
-        description = "Return a compact, capped inventory snapshot of objects currently in the semantic map. " +
-            "Each object includes a suggested_goal standoff pose for nav.move_to when the current map pose is available. " +
-            "Set include_provisional to also list un-validated local-map objects (tagged metadata.state=provisional), " +
-            "which are low-trust and may never be kept.",
+        description = "Return a compact, capped inventory snapshot of objects currently in the semantic map, " +
+            "each with its map-frame coordinates (x, y). To navigate to one, pass its (x, y) to nav.plan_approach, " +
+            "then nav.move_to. By default this includes low-trust provisional local-map objects (tagged " +
+            "metadata.state=provisional), which may never be kept. Set validated_only=true for validated objects only.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
@@ -62,22 +62,22 @@ class SemanticMcpSurface(
         @McpToolParam(description = "Max objects to return. Omit for the server default cap.", required = false)
         limit: Int?,
         @McpToolParam(
-            description = "Also list un-validated provisional objects from the local map (tagged metadata.state=provisional). Omit for validated objects only.",
+            description = "Restrict to validated (promoted) objects only. Omit to also list low-trust provisional local-map objects (metadata.state=provisional).",
             required = false,
         )
-        includeProvisional: Boolean?,
+        validatedOnly: Boolean?,
     ): Map<String, Any?> = toolCallLogger.log(
         direction = "inbound",
         tool = "semantic.list_objects",
-        context = mapOf("limit" to limit, "include_provisional" to includeProvisional),
+        context = mapOf("limit" to limit, "validated_only" to validatedOnly),
     ) {
-        semantic.listObjects(limit, includeProvisional)
+        semantic.listObjects(limit, validatedOnly)
     }
 
     @McpTool(
         name = "semantic.describe_near",
         description = "List mapped objects around a map-frame point (pairs with nav.get_pose), nearest first. " +
-            "Use each object's suggested_goal for navigation when present, not the raw object centroid.",
+            "To navigate to one, pass its (x, y) to nav.plan_approach for a reachable standoff pose, then nav.move_to.",
         annotations = McpTool.McpAnnotations(readOnlyHint = true, destructiveHint = false, idempotentHint = false, openWorldHint = true),
         generateOutputSchema = true,
         metaProvider = SemanticCategory::class,
